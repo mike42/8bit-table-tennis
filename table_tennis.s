@@ -110,6 +110,8 @@ temp:           .res 1 ; temporary variable
 .segment "BSS"
 nmt_update: .res 256 ; nametable update entry buffer for PPU update
 palette:    .res 32  ; palette buffer for PPU update
+player1_name: .res 8
+player2_name: .res 8
 
 .segment "OAM"
 oam: .res 256        ; sprite OAM data to be uploaded by DMA
@@ -404,6 +406,10 @@ example_palette:
 .byte $0F,$14,$24,$34 ; sp2 purple
 .byte $0F,$1B,$2B,$3B ; sp3 teal
 
+player1_name_default:
+.byte $12,$0E,$03,$1B,$07,$14,$00,$21
+player2_name_default:
+.byte $12,$0E,$03,$1B,$07,$14,$00,$22
 
 .segment "ZEROPAGE"
 player1_x: .res 1
@@ -433,6 +439,16 @@ main:
     sta palette, X
     inx
     cpx #32
+    bcc :-
+  ; default player names
+  ldx #0
+  :
+    lda player1_name_default, X
+    sta player1_name, X
+    lda player2_name_default, X
+    sta player2_name, X
+    inx
+    cpx #8
     bcc :-
   jsr setup_background
   ; place player sprites
@@ -751,6 +767,28 @@ setup_background:
     sta $2007
     dex
     bne :-
+  ; draw player 1 name
+  ldy #1 ; start at row 1
+  ldx #0 ; start at column 0
+  jsr ppu_address_tile
+  ldx #0
+  :
+    lda player1_name, X
+    sta $2007
+    inx
+    cpx #8 ; 8 characters to draw
+    bcc :-
+  ; draw player 2 name
+  ldy #1 ; start at row 1
+  ldx #24 ; start at column 24
+  jsr ppu_address_tile
+  ldx #0
+  :
+    lda player2_name, X
+    sta $2007
+    inx
+    cpx #8 ; 8 characters to draw
+    bcc :-
   ; draw top border
   ldy #3 ; start at row 3 
   ldx #0 ; start at column 0
@@ -771,7 +809,7 @@ setup_background:
     sta $2007
     dex
     bne :-
-  ; TODO draw a net
+  ; TODO draw a net?
   rts
 
 ;
