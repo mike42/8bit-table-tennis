@@ -417,9 +417,12 @@ ball_y: .res 1
 ball_x_speed: .res 1
 ball_y_speed: .res 1
 ball_state: .res 1
+player1_score: .res 1
+player2_score: .res 1
 
 BALL_LEFT      = $01
 BALL_UP        = $02
+BALL_SERVE     = $04
 
 .segment "CODE"
 main:
@@ -443,13 +446,17 @@ main:
   lda #4 ; not yet used
   sta player1_size
   sta player2_size
-  lda #110 ; not yet adjusted for sanity
+  lda #((256/2) - 4)
   sta ball_x
+  lda #((240/2) - 4)
   sta ball_y
-  lda #0
+  lda #BALL_SERVE
   sta ball_state
   lda #2
   sta ball_x_speed
+  lda #0
+  sta player1_score
+  sta player2_score
   lda #1
   sta ball_y_speed
   ; show the screen
@@ -471,6 +478,11 @@ main:
   beq :+
     jsr player_1_down
   :
+  lda gamepad_player_1
+  and #PAD_A
+  beq :+
+    jsr player_1_a
+  :
   lda gamepad_player_2
   and #PAD_U
   beq :+
@@ -481,10 +493,10 @@ main:
   beq :+
     jsr player_2_down
   :
-  lda gamepad_player_1
-  and #PAD_SELECT
+  lda gamepad_player_2
+  and #PAD_A
   beq :+
-    jsr push_select
+    jsr player_2_a
   :
   jsr apply_physics
 @draw:
@@ -497,39 +509,9 @@ main:
 apply_physics: ; yeah 'physics'
   clc
   lda ball_state
-  and #BALL_LEFT
-    ; Move left
+  and #BALL_SERVE
     beq :+
-    lda ball_x
-    sec
-    sbc ball_x_speed
-    sta ball_x
-    ; Test if bouncing (left)
-    cmp #(8)
-    bcs :+
-      lda #(8)
-      sta ball_x
-      lda #BALL_LEFT
-      eor ball_state
-      sta ball_state
-    :
-  :
-  lda ball_state
-  and #BALL_LEFT
-    ; Move right
-    bne :+
-    lda ball_x
-    adc ball_x_speed
-    sta ball_x
-    ; Test if bouncing (right)
-    cmp #(30*8)
-    bcc :+
-      lda #(30*8)
-      sta ball_x
-      lda #BALL_LEFT
-      eor ball_state
-      sta ball_state
-    :
+    rts
   :
   clc
   lda ball_state
@@ -563,6 +545,44 @@ apply_physics: ; yeah 'physics'
       lda #(27*8)
       sta ball_y
       lda #BALL_UP
+      eor ball_state
+      sta ball_state
+    :
+  :
+  clc
+  lda ball_state
+  and #BALL_LEFT
+    ; Move left
+    beq :+
+    lda ball_x
+    sec
+    sbc ball_x_speed
+    sta ball_x
+    ; Test if bouncing (left)
+    cmp #(8)
+    bcs :+
+      ; TODO test if player2 missed the ball
+      lda #(8)
+      sta ball_x
+      lda #BALL_LEFT
+      eor ball_state
+      sta ball_state
+    :
+  :
+  lda ball_state
+  and #BALL_LEFT
+    ; Move right
+    bne :+
+    lda ball_x
+    adc ball_x_speed
+    sta ball_x
+    ; Test if bouncing (right)
+    cmp #(30*8)
+    bcc :+
+      ; TODO test if player1 missed the ball
+      lda #(30*8)
+      sta ball_x
+      lda #BALL_LEFT
       eor ball_state
       sta ball_state
     :
@@ -622,16 +642,28 @@ player_2_down:
   :
   rts
 
-push_select:
-  ; turn off rendering so we can manually update entire nametable
-  jsr ppu_off
-  jsr setup_background
-  ; wait for user to release select before continuing
+player_1_a:
+  ; Might need to serve
+  clc
+  lda ball_state
+  and #BALL_SERVE
+  beq :+
+    lda #BALL_SERVE
+    eor ball_state
+    sta ball_state
   :
-    jsr gamepad_poll_player1
-    lda gamepad_player_1
-    and #PAD_SELECT
-    bne :-
+  rts
+
+player_2_a:
+  ; Might need to serve
+  clc
+  lda ball_state
+  and #BALL_SERVE
+  beq :+
+    lda #BALL_SERVE
+    eor ball_state
+    sta ball_state
+  :
   rts
 
 draw_game_sprites:
