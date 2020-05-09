@@ -410,6 +410,8 @@ player1_name_default:
 .byte $12,$0E,$03,$1B,$07,$14,$00,$21
 player2_name_default:
 .byte $12,$0E,$03,$1B,$07,$14,$00,$22
+game_over:
+.byte $09,$03,$03,$07,$00,$11,$18,$07,$14
 
 .segment "ZEROPAGE"
 player1_x: .res 1
@@ -431,6 +433,7 @@ BALL_LEFT      = $01
 BALL_UP        = $02
 BALL_SERVE     = $04
 BALL_OUT       = $08
+GAME_OVER      = $0f
 
 .segment "CODE"
 main:
@@ -653,6 +656,8 @@ ball_left_physics:
   sta ball_state
   lda #100
   sta state_delay_counter
+  inc player2_score
+  jsr update_scores
   rts
 
 
@@ -691,6 +696,8 @@ ball_right_physics:
   sta ball_state
   lda #100
   sta state_delay_counter
+  inc player1_score
+  jsr update_scores
   rts
 
 
@@ -840,6 +847,78 @@ draw_game_sprites:
   sta oam+(8*4)+3
   rts
 
+draw_scores:
+  ; (x, y) of score
+  ldy #2
+  ldx #13
+  jsr ppu_address_tile
+  lda #$20
+  sta $2007
+  sta $2007
+  lda #0
+  sta $2007
+  sta $2007
+  lda #$20
+  sta $2007
+  sta $2007
+  rts
+
+update_scores:
+  ; wow this is inefficient
+  ; Player 1 score
+  lda player1_score
+  cmp #(10)
+  bcc :+
+    ; Number >= 10
+    ldy #2
+    ldx #13
+    lda #$21
+    jsr ppu_update_tile
+    ldx #14
+    lda player1_score
+    adc #($20 - 10)
+    jsr ppu_update_tile
+    jmp @end_update_player_1
+  :
+  ; Number < 10
+  ldy #2
+  ldx #13
+  lda #$20
+  jsr ppu_update_tile
+  ldy #2
+  ldx #14
+  lda player1_score
+  adc #$20
+  jsr ppu_update_tile
+@end_update_player_1:
+  ; Player 2 score
+  lda player2_score
+  cmp #(10)
+  bcc :+
+    ; Number >= 10
+    ldy #2
+    ldx #17
+    lda #$21
+    jsr ppu_update_tile
+    ldx #18
+    lda player2_score
+    adc #($20 - 10)
+    jsr ppu_update_tile
+    jmp @end_update_player_2
+  :
+  ; Number < 10
+  ldy #2
+  ldx #17
+  lda #$20
+  jsr ppu_update_tile
+  ldy #2
+  ldx #18
+  lda player2_score
+  adc #$20
+  jsr ppu_update_tile
+@end_update_player_2:
+  rts
+
 setup_background:
   ; first nametable, start by clearing to empty
   lda $2002 ; reset latch
@@ -886,6 +965,7 @@ setup_background:
     inx
     cpx #8 ; 8 characters to draw
     bcc :-
+  jsr draw_scores
   ; draw top border
   ldy #3 ; start at row 3 
   ldx #0 ; start at column 0
@@ -906,7 +986,6 @@ setup_background:
     sta $2007
     dex
     bne :-
-  ; TODO draw a net?
   rts
 
 ;
