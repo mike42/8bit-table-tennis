@@ -410,7 +410,7 @@ player1_name_default:
 .byte $12,$0E,$03,$1B,$07,$14,$00,$21
 player2_name_default:
 .byte $12,$0E,$03,$1B,$07,$14,$00,$22
-game_over:
+game_over_text:
 .byte $09,$03,$03,$07,$00,$11,$18,$07,$14
 
 .segment "ZEROPAGE"
@@ -433,11 +433,11 @@ BALL_LEFT      = $01
 BALL_UP        = $02
 BALL_SERVE     = $04
 BALL_OUT       = $08
-GAME_OVER      = $0f
+GAME_OVER      = $10
 
 .segment "CODE"
 main:
-  ; setup 
+  ; setup
   ldx #0
   :
     lda example_palette, X
@@ -488,6 +488,32 @@ main:
   ; read gamepad
   jsr gamepad_poll_player1
   jsr gamepad_poll_player2
+  ; Game over - reset after a while
+  clc
+  lda ball_state
+  and #GAME_OVER
+  beq :++
+    ; freeze the game for a moment
+    dec state_delay_counter
+    lda state_delay_counter
+    clc
+    cmp #0
+    bne :+
+      ; reset counters, ball state
+      lda #BALL_SERVE
+      sta ball_state
+      lda #0
+      sta player1_score
+      sta player2_score
+      jsr update_scores
+      ; Reset to center
+      lda #((256/2) - 4)
+      sta ball_x
+      lda #((240/2) - 4)
+      sta ball_y
+    :
+    jmp @draw
+  :
   ; Ball out - change to a serve after a while
   clc
   lda ball_state
@@ -658,6 +684,7 @@ ball_left_physics:
   sta state_delay_counter
   inc player2_score
   jsr update_scores
+  jsr check_game_over
   rts
 
 
@@ -698,6 +725,7 @@ ball_right_physics:
   sta state_delay_counter
   inc player1_score
   jsr update_scores
+  jsr check_game_over
   rts
 
 
@@ -726,7 +754,6 @@ player_1_down:
     sta player1_y
   :
   rts
-  
 
 player_2_up:
   dec player2_y
@@ -919,6 +946,19 @@ update_scores:
 @end_update_player_2:
   rts
 
+check_game_over:
+  lda player1_score
+  cmp #(11)
+  bcs @it_is_game_over
+  lda player2_score
+  cmp #(11)
+  bcs @it_is_game_over
+  rts
+@it_is_game_over:
+  lda #GAME_OVER
+  sta ball_state
+  rts
+
 setup_background:
   ; first nametable, start by clearing to empty
   lda $2002 ; reset latch
@@ -967,7 +1007,7 @@ setup_background:
     bcc :-
   jsr draw_scores
   ; draw top border
-  ldy #3 ; start at row 3 
+  ldy #3 ; start at row 3
   ldx #0 ; start at column 0
   jsr ppu_address_tile
   lda #1 ; geometric brick
