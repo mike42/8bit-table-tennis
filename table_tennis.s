@@ -425,10 +425,12 @@ ball_y_speed: .res 1
 ball_state: .res 1
 player1_score: .res 1
 player2_score: .res 1
+state_delay_counter: .res 1
 
 BALL_LEFT      = $01
 BALL_UP        = $02
 BALL_SERVE     = $04
+BALL_OUT       = $08
 
 .segment "CODE"
 main:
@@ -483,6 +485,32 @@ main:
   ; read gamepad
   jsr gamepad_poll_player1
   jsr gamepad_poll_player2
+  ; Ball out - change to a serve after a while
+  clc
+  lda ball_state
+  and #BALL_OUT
+  beq :++
+    ; freeze the game for a moment
+    dec state_delay_counter
+    lda state_delay_counter
+    clc
+    cmp #0
+    bne :+
+      ; Reset to center
+      lda #((256/2) - 4)
+      sta ball_x
+      lda #((240/2) - 4)
+      sta ball_y
+      ; Being careful to preserve L/R direction
+      lda #BALL_SERVE
+      eor ball_state
+      sta ball_state
+      lda #BALL_OUT
+      eor ball_state
+      sta ball_state
+    :
+    jmp @draw
+  :
   ; respond to gamepad state
   lda gamepad_player_1
   and #PAD_U
@@ -523,87 +551,148 @@ main:
   jmp @loop
 
 apply_physics: ; yeah 'physics'
+  ; Waiting for a serve
   clc
   lda ball_state
   and #BALL_SERVE
-    beq :+
+  beq :+
     rts
   :
   clc
   lda ball_state
   and #BALL_UP
-    beq :+
-    ; Move up
-    lda ball_y
-    sec
-    sbc ball_y_speed
-    sta ball_y
-    ; Test if bouncing (up)
-    cmp #(4*8)
-    bcs :+
-      lda #(4*8)
-      sta ball_y
-      lda #BALL_UP
-      eor ball_state
-      sta ball_state
-    :
+  beq :+
+    jsr ball_up_physics
   :
+  clc
   lda ball_state
   and #BALL_UP
-    bne :+
-    ; Move down
-    lda ball_y_speed
-    adc ball_y
-    sta ball_y
-    ; Test if bouncing (bottom)
-    cmp #(27*8)
-    bcc :+
-      lda #(27*8)
-      sta ball_y
-      lda #BALL_UP
-      eor ball_state
-      sta ball_state
-    :
+  bne :+
+    jsr ball_down_physics
+  :
+  ; Move left
+  clc
+  lda ball_state
+  and #BALL_LEFT
+  beq :+
+    jsr ball_left_physics
   :
   clc
   lda ball_state
   and #BALL_LEFT
-    ; Move left
-    beq :+
-    lda ball_x
-    sec
-    sbc ball_x_speed
-    sta ball_x
-    ; Test if bouncing (left)
-    cmp #(8)
-    bcs :+
-      ; TODO test if player2 missed the ball
-      lda #(8)
-      sta ball_x
-      lda #BALL_LEFT
-      eor ball_state
-      sta ball_state
-    :
-  :
-  lda ball_state
-  and #BALL_LEFT
-    ; Move right
-    bne :+
-    lda ball_x
-    adc ball_x_speed
-    sta ball_x
-    ; Test if bouncing (right)
-    cmp #(30*8)
-    bcc :+
-      ; TODO test if player1 missed the ball
-      lda #(30*8)
-      sta ball_x
-      lda #BALL_LEFT
-      eor ball_state
-      sta ball_state
-    :
+  bne :+
+    jsr ball_right_physics
   :
   rts
+
+ball_up_physics:
+  ; Move up
+  lda ball_y
+  sec
+  sbc ball_y_speed
+  sta ball_y
+  ; Test if bouncing (up)
+  cmp #(4*8)
+  bcs :+
+    lda #(4*8)
+    sta ball_y
+    lda #BALL_UP
+    eor ball_state
+    sta ball_state
+  :
+  rts
+
+ball_down_physics:
+  ; Move down
+  lda ball_y_speed
+  adc ball_y
+  sta ball_y
+  ; Test if bouncing (bottom)
+  cmp #(27*8)
+  bcc :+
+    lda #(27*8)
+    sta ball_y
+    lda #BALL_UP
+    eor ball_state
+    sta ball_state
+  :
+  rts
+
+ball_left_physics:
+  lda ball_x
+  sec
+  sbc ball_x_speed
+  sta ball_x
+  ; Test if bouncing (left)
+  cmp #(8-1)
+  bcs :+
+    ; always bounce off left
+    lda #BALL_LEFT
+    eor ball_state
+    sta ball_state
+    ; test if ball is too high
+    clc
+    lda ball_y
+    adc #(8)
+    cmp player1_y
+    bcc @player_1_missed
+    ; test if ball is too low
+    clc
+    lda player1_y
+    adc #(8*4)
+    cmp ball_y
+    bcc @player_1_missed
+    @player_1_ok:
+    lda #(8)
+    sta ball_x
+  :
+  rts
+@player_1_missed:
+  lda #BALL_OUT
+  eor ball_state
+  sta ball_state
+  lda #100
+  sta state_delay_counter
+  rts
+
+
+ball_right_physics:
+  ; Move right
+  lda ball_x
+  adc ball_x_speed
+  sta ball_x
+  ; Test if bouncing (right)
+  cmp #(30*8+1)
+  bcc :+
+    ; always bounce off right
+    lda #BALL_LEFT
+    eor ball_state
+    sta ball_state
+    ; test if ball is too high
+    clc
+    lda ball_y
+    adc #(8)
+    cmp player2_y
+    bcc @player_2_missed
+    ; test if ball is too low
+    clc
+    lda player2_y
+    adc #(8*4)
+    cmp ball_y
+    bcc @player_2_missed
+    @player_2_ok:
+    lda #(30*8)
+    sta ball_x
+  :
+  rts
+@player_2_missed:
+  lda #BALL_OUT
+  eor ball_state
+  sta ball_state
+  lda #100
+  sta state_delay_counter
+  rts
+
 
 player_1_up:
   dec player1_y
@@ -663,10 +752,14 @@ player_1_a:
   clc
   lda ball_state
   and #BALL_SERVE
-  beq :+
-    lda #BALL_SERVE
-    eor ball_state
-    sta ball_state
+  beq :++
+    lda ball_state
+    and #BALL_LEFT
+    bne :+
+      lda #BALL_SERVE
+      eor ball_state
+      sta ball_state
+    :
   :
   rts
 
@@ -675,10 +768,14 @@ player_2_a:
   clc
   lda ball_state
   and #BALL_SERVE
-  beq :+
-    lda #BALL_SERVE
-    eor ball_state
-    sta ball_state
+  beq :++
+    lda ball_state
+    and #BALL_LEFT
+    beq :+
+      lda #BALL_SERVE
+      eor ball_state
+      sta ball_state
+    :
   :
   rts
 
