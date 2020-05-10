@@ -91,7 +91,7 @@ reset:
   ; enable the NMI for graphical updates, and jump to our main program
   lda #%10001000
   sta $2000
-  jmp main
+  jmp title_screen
 
 ;
 ; nmi routine
@@ -412,6 +412,8 @@ player2_name_default:
 .byte $12,$0E,$03,$1B,$07,$14,$00,$22
 game_over_text:
 .byte $09,$03,$03,$07,$00,$11,$18,$07,$14
+push_start_text:
+.byte $12,$17,$15,$0a,$00,$15,$16,$03,$14,$16
 
 .segment "ZEROPAGE"
 player1_x: .res 1
@@ -436,7 +438,7 @@ BALL_OUT       = $08
 GAME_OVER      = $10
 
 .segment "CODE"
-main:
+title_screen:
   ; setup
   ldx #0
   :
@@ -456,6 +458,28 @@ main:
     cpx #8
     bcc :-
   jsr setup_background
+  lda #1
+  sta scroll_nmt
+  
+title_screen_loop:
+  ; read gamepad
+  jsr gamepad_poll_player1
+  jsr gamepad_poll_player2
+  lda gamepad_player_1
+  and #PAD_START
+  beq :+
+    lda #0
+    sta scroll_nmt
+    jmp main
+  :
+
+@title_screen_draw:
+  ; draw everything and finish the frame
+  jsr ppu_update
+  ; keep doing this forever!
+  jmp title_screen_loop
+
+main:
   ; place player sprites
   lda #0
   sta player1_x
@@ -507,10 +531,10 @@ main:
       sta player2_score
       jsr update_scores
       ; Reset to center
-      lda #((256/2) - 4)
-      sta ball_x
-      lda #((240/2) - 4)
-      sta ball_y
+      jsr clear_game_sprites
+      lda #1
+      sta scroll_nmt
+      jmp title_screen_loop
     :
     jmp @draw
   :
@@ -813,6 +837,21 @@ player_2_a:
   :
   rts
 
+clear_game_sprites:
+  ; TODO
+  lda #250
+  clc
+  sta oam+(0*4)+0
+  sta oam+(1*4)+0
+  sta oam+(2*4)+0
+  sta oam+(3*4)+0
+  sta oam+(4*4)+0
+  sta oam+(5*4)+0
+  sta oam+(6*4)+0
+  sta oam+(7*4)+0
+  sta oam+(8*4)+0
+  rts
+
 draw_game_sprites:
   ; player 1 paddle bricks y-pos
   lda player1_y
@@ -1026,6 +1065,19 @@ setup_background:
     sta $2007
     dex
     bne :-
+  ;
+  ; 'PUSH START'
+  ldy #45
+  ldx #12
+  jsr ppu_address_tile
+  ldx #0
+  :
+    lda push_start_text, X
+    sta $2007
+    inx
+    cpx #10 ; 8 characters to draw
+    bcc :-
+
   rts
 
 ;
