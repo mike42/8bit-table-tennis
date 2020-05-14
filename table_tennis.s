@@ -106,6 +106,8 @@ scroll_x:       .res 1 ; x scroll position
 scroll_y:       .res 1 ; y scroll position
 scroll_nmt:     .res 1 ; nametable select (0-3 = $2000,$2400,$2800,$2C00)
 temp:           .res 1 ; temporary variable
+i:              .res 1 ; loop indices
+j:              .res 1
 
 .segment "BSS"
 nmt_update: .res 256 ; nametable update entry buffer for PPU update
@@ -412,8 +414,24 @@ player2_name_default:
 .byte $12,$0E,$03,$1B,$07,$14,$00,$22
 game_over_text:
 .byte $09,$03,$03,$07,$00,$11,$18,$07,$14
-push_start_text:
-.byte $12,$17,$15,$0a,$00,$15,$16,$03,$14,$16
+start_screen_tiles_1:
+.byte $2a,$32,$28,$1d,$04,$0b,$16,$30,$31,$31,$31,$31,$31,$31,$31,$31,$31,$31,$31,$2b
+.byte $2c,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$2f
+.byte $2c,$00,$34,$35,$36,$39,$3a,$3b,$42,$43,$44,$4c,$00,$00,$42,$4d,$36,$00,$00,$2f
+.byte $2c,$00,$00,$37,$00,$3c,$3d,$3e,$3c,$45,$46,$37,$00,$00,$3c,$4e,$00,$00,$00,$2f
+.byte $2c,$00,$00,$37,$00,$3f,$40,$41,$3f,$47,$48,$37,$00,$00,$3f,$4f,$00,$00,$00,$2f
+.byte $2c,$00,$00,$38,$00,$38,$00,$38,$49,$4a,$4b,$49,$4d,$36,$49,$4d,$36,$00,$00,$2f
+.byte $2c,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$2f
+.byte $2c,$00,$34,$35,$36,$42,$4d,$36,$50,$51,$4c,$50,$51,$4c,$4c,$58,$4d,$36,$00,$2f
+start_screen_tiles_2:
+.byte $2c,$00,$00,$37,$00,$3c,$4e,$00,$52,$53,$37,$52,$53,$37,$37,$59,$3d,$5a,$00,$2f
+.byte $2c,$00,$00,$37,$00,$3f,$4f,$00,$37,$54,$55,$37,$54,$55,$37,$5b,$40,$41,$00,$2f
+.byte $2c,$00,$00,$38,$00,$49,$4d,$36,$38,$56,$57,$38,$56,$57,$38,$34,$4d,$5c,$00,$2f
+.byte $2c,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$2f
+.byte $2d,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$33,$2e
+.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+.byte $00,$00,$00,$00,$00,$12,$17,$15,$0a,$00,$15,$16,$03,$14,$16,$00,$00,$00,$00,$00
 
 .segment "ZEROPAGE"
 player1_x: .res 1
@@ -1065,19 +1083,68 @@ setup_background:
     sta $2007
     dex
     bne :-
-  ;
-  ; 'PUSH START'
-  ldy #45
-  ldx #12
-  jsr ppu_address_tile
-  ldx #0
-  :
-    lda push_start_text, X
-    sta $2007
-    inx
-    cpx #10 ; 8 characters to draw
+  ; Start screen - upper part
+  lda #0 ; tile number 0-100
+  sta i
+  ldy #0 ; row number 0-7
+  sty j
+  : ; for each row
+    ; set $2006 to memory address at start of row
+    clc
+    lda j
+    adc #(32+6) ; Y-position
+    clc
+    tay
+    ldx #6 ; X-position
+    jsr ppu_address_tile
+    ; write 20 tiles for the row
+    ldy i
+    ldx #0
+    :
+      lda start_screen_tiles_1, Y
+      sta $2007
+      inx
+      iny
+      cpx #20 ; 20 tiles for the row
     bcc :-
-
+    ; for next iteration..
+    sty i
+    ; increment row number, compare
+    inc j
+    ldx j
+    cpx #8 ; 8 rows to draw
+  bcc :--
+  ; Start screen - lower part
+  lda #0 ; tile number 0-100
+  sta i
+  ldy #0 ; row number 0-7
+  sty j
+  : ; for each row
+    ; set $2006 to memory address at start of row
+    clc
+    lda j
+    adc #(32+6+8) ; Y-position
+    clc
+    tay
+    ldx #6 ; X-position
+    jsr ppu_address_tile
+    ; write 20 tiles for the row
+    ldy i
+    ldx #0
+    :
+      lda start_screen_tiles_2, Y
+      sta $2007
+      inx
+      iny
+      cpx #20 ; 20 tiles for the row
+    bcc :-
+    ; for next iteration..
+    sty i
+    ; increment row number, compare
+    inc j
+    ldx j
+    cpx #8 ; 8 rows to draw
+  bcc :--
   rts
 
 ;
