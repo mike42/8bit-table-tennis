@@ -1083,6 +1083,29 @@ setup_background:
     sta $2007
     dex
     bne :-
+  ; clear second nametable
+  lda $2002 ; reset latch
+  lda #$24
+  sta $2006
+  lda #$00
+  sta $2006
+  lda #0 ; blank tile
+  ldy #30 ; 30 rows
+  :
+    ldx #32 ; 32 columns
+    :
+      sta $2007
+      dex
+      bne :-
+    dey
+    bne :--
+  ; set all attributes
+  lda #%01010101 ; palette 1
+  ldx #64 ; 64 bytes
+  :
+    sta $2007
+    dex
+    bne :-
   ; Start screen - upper part
   lda #0 ; tile number 0-100
   sta i
