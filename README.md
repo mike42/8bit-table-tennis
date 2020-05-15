@@ -1,6 +1,4 @@
-# 8-Bit Table Tennis
-
-[![Build Status](https://travis-ci.org/mike42/8bit-table-tennis.svg?branch=master)](https://travis-ci.org/mike42/8bit-table-tennis)
+# 8-Bit Table Tennis  [![Build Status](https://travis-ci.org/mike42/8bit-table-tennis.svg?branch=master)](https://travis-ci.org/mike42/8bit-table-tennis)
 
 8-Bit Table Tennis is a homebrew 2-player game for the Nintendo Entertainment System (NES).
 
