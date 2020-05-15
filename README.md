@@ -6,7 +6,7 @@
 
 ![Start screen](screenshot/table_tennis_gameplay_00.png)
 
-## Gamplay
+## Gameplay
 
 - Push START to begin.
 - Press UP/DOWN to move.
