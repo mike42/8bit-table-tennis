@@ -1,5 +1,7 @@
 # 8-Bit Table Tennis
 
+[![Build Status](https://travis-ci.org/mike42/8bit-table-tennis.svg?branch=master)](https://travis-ci.org/mike42/8bit-table-tennis)
+
 8-Bit Table Tennis is a homebrew 2-player game for the Nintendo Entertainment System (NES).
 
 ![Start screen](screenshot/table_tennis_start_screen.png)
@@ -25,6 +27,7 @@ The steps to build this project are listed in [build.sh](https://github.com/mike
 
 ## License
 
-This project may be used under the terms of the MIT license, see [LICENSE](https://github.com/mike42/8bit-table-tennis/blob/master/LICENSE) for details.
+8-Bit Table Tennis may be used, distributed and modified under the terms of the MIT license, see [LICENSE](https://github.com/mike42/8bit-table-tennis/blob/master/LICENSE) for details.
 
-It is based on example code by Brad Smith - [bbbradsmith/NES-ca65-example](https://github.com/bbbradsmith/NES-ca65-example).
+The code is based on a NES example project by Brad Smith, which can be found at [bbbradsmith/NES-ca65-example](https://github.com/bbbradsmith/NES-ca65-example).
+
