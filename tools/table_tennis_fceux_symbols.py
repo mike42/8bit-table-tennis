@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-padde_rally_fceux_symbols: Convert debug symbols to FCEUX-format.
+table_tennis_fceux_symbols: Convert debug symbols to FCEUX-format.
 
 Based on https://github.com/bbbradsmith/NES-ca65-example
 """
